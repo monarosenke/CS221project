@@ -7,41 +7,44 @@
 % MathWorks on how to start using neural networks. From there we modified
 % the code to use it for our project using the skin cancer dataset from
 % kaggel.
+%
+% Code assumes that pwd is ~/CS211project/code 
 
 clearvars
-% load pretrained ResNet50
+
+% if miniset, only the first 100 images of the skin cancer dataset will be used to
+% retrain the last layer
+miniset = 1
+
+
+%% load pretrained ResNet50
 net = resnet50;
 analyzeNetwork(net)
 
 inputSize = net.Layers(1).InputSize;
 
-% load our dataset
+%% load our dataset
 imds = imageDatastore('../data/','FileExtensions','.jpg','IncludeSubfolders',true);
-
-% files = dir('../data/**/*.jpg');
-% I = cell(size(files));
-% for i = 1:length(I)
-%     image = imread([files(i).folder '/' files(i).name]);
-%     I{i} = imresize(image,inputSize(1:2));
-% end
-
 
 % loading meta data
 D = readtable('../data/HAM10000_metadata.csv');
 numClasses = numel(unique(D.dx));
-Y = zeros(size(D,1),1);
-for i = 1:length(categories)
-    Y(find(strcmp(D.dx,categories{i}))) = i;
-end
+% Y = zeros(size(D,1),1);
+% for i = 1:length(categories)
+%     Y(find(strcmp(D.dx,categories{i}))) = i;
+% end
 % imds.Labels = Y;
 imds.Labels = categorical(D.dx);
 
-% splitting data
-[imdsTrain,imdsValidation] = splitEachLabel(imds,0.7);
+% splitting data into train and validation set, if only a mini test dataset, use
+% a small subset of the full dataset
+if miniset
+    [imdsTrain,imdsValidation,~] = splitEachLabel(imds,0.01,0.004);
+else
+    [imdsTrain,imdsValidation] = splitEachLabel(imds,0.7);
+end
 
-
-% replacing last fully connected layer in the network as well as the
-% classification layer
+%% replacing last fully connected layer in the network as well as the classification layer
 lgraph = layerGraph(net);
 
 newLearnableLayer = fullyConnectedLayer(numClasses, ...
@@ -103,7 +106,7 @@ augimdsTrain = augmentedImageDatastore(inputSize(1:2),imdsTrain, ...
 
 augimdsValidation = augmentedImageDatastore(inputSize(1:2),imdsValidation);
 
-% making sure we learn fast in the now layers but slow in the early
+% making sure we learn fast in the new layers but slow in the early
 % (existing) ones
 options = trainingOptions('sgdm', ...
     'MiniBatchSize',10, ...
@@ -115,29 +118,21 @@ options = trainingOptions('sgdm', ...
     'Verbose',false, ...
     'Plots','training-progress');
 
-% TRAIN THE NETWORK
+%% TRAIN THE NETWORK
 net = trainNetwork(augimdsTrain,lgraph,options);
 
 
+%% classifying the image
 
+[YPred,probs] = classify(net,augimdsValidation);
+accuracy = mean(YPred == imdsValidation.Labels)
 
-% classifying the image
-[label,scores] = classify(net,I);
-label
-title(string(label) + ", " + num2str(100*scores(classNames == label),3) + "%");
-
-
-%% display top predictions
-[~,idx] = sort(scores,'descend');
-idx = idx(5:-1:1);
-classNamesTop = net.Layers(end).ClassNames(idx);
-scoresTop = scores(idx);
-
+idx = randperm(numel(imdsValidation.Files),4);
 figure
-barh(scoresTop)
-xlim([0 1])
-title('Top 5 Predictions')
-xlabel('Probability')
-yticklabels(classNamesTop)
-
-
+for i = 1:4
+    subplot(2,2,i)
+    I = readimage(imdsValidation,idx(i));
+    imshow(I)
+    label = YPred(idx(i));
+    title(string(label) + ", " + num2str(100*max(probs(idx(i),:)),3) + "%");
+end

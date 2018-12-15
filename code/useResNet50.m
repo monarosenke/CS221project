@@ -15,16 +15,35 @@ clearvars
 % if miniset, only the first 100 images of the skin cancer dataset will be used to
 % retrain the last layer
 miniset = 1
+imageFiltering = 'e'; % e for edge, g for gradient, n for none
 
 
 %% load pretrained ResNet50
 net = resnet50;
-analyzeNetwork(net)
+analyzeNetwork(net);
 
 inputSize = net.Layers(1).InputSize;
 
+
+
 %% load our dataset
-imds = imageDatastore('../data/','FileExtensions','.jpg','IncludeSubfolders',true);
+
+switch imageFiltering
+    case 'n'
+        imds = imageDatastore('../data/','FileExtensions','.jpg','IncludeSubfolders',true);
+    case 'e'
+        imds = imageDatastore('../processedImages/edgeFiltered/','FileExtensions','.jpg','IncludeSubfolders',true);
+    case 'g'
+        imds = imageDatastore('../processedImages/gradientFiltered/','FileExtensions','.jpg','IncludeSubfolders',true);
+end
+
+% filtering 
+%switch filtering
+    %case 'e'
+        imds
+
+
+
 
 % loading meta data
 D = readtable('../data/HAM10000_metadata.csv');

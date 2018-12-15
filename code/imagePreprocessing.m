@@ -29,6 +29,7 @@ for ind = 1:length(S)
     
     [Gx, Gy, ~] = imgradientxyz(I);
     normImage = im2double(Gx);
+    normImage = repmat(normImage,1,1,3);
     imwrite(normImage, [direct, name '/' S(ind).name]);
 end
 

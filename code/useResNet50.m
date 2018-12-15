@@ -15,7 +15,7 @@ clearvars
 % if miniset, only the first 100 images of the skin cancer dataset will be used to
 % retrain the last layer
 miniset = 1
-imageFiltering = 'e'; % e for edge, g for gradient, n for none
+imageFiltering = 'g'; % e for edge, g for gradient, n for none
 
 
 %% load pretrained ResNet50
